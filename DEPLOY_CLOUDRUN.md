@@ -16,15 +16,14 @@ vars does nothing for the client.
 | Variable | Purpose | Current value (default) |
 |---|---|---|
 | `VITE_FRAB_API_URL` | Synthetic bank API | `https://synthetic-bank-deploy-200002205070.asia-south1.run.app` |
-| `VITE_FRAB_WORKER_URL` | Investigation worker (Gemma VM) | `http://34.46.41.101:8080` |
+| `VITE_FRAB_WORKER_URL` | Investigation worker (Gemma VM, HTTPS tunnel) | `https://identified-gotten-astronomy-healthy.trycloudflare.com` |
 | `VITE_FRAB_VOICE_URL` | Voice escalation service | `https://frab-voice-200002205070.asia-south1.run.app` |
 | `VITE_FRAB_VOICE_TEST_PHONE` | Optional demo phone override | *(empty)* |
 
-> Note: `VITE_FRAB_WORKER_URL` is **http** (the Gemma VM has no TLS). If the
-> frontend is served over **https** on Cloud Run, the browser will block the
-> worker's SSE (`EventSource`) as mixed content. For a fully-HTTPS demo, the
-> worker needs to be behind HTTPS (or proxied). The bank + voice services are
-> already HTTPS and unaffected.
+> Note: the worker is fronted by an HTTPS tunnel so it works from the HTTPS
+> frontend (no mixed-content blocking). The tunnel URL is **temporary** — if the
+> tunnel or VM restarts it changes, and the frontend must be rebuilt with the
+> new `_WORKER_URL`. All three services (bank, worker, voice) are HTTPS.
 
 ---
 
@@ -66,7 +65,7 @@ gcloud builds submit --config cloudbuild.yaml \
 # 1. Build the image (bakes the public config into the bundle)
 docker build \
   --build-arg VITE_FRAB_API_URL=https://synthetic-bank-deploy-200002205070.asia-south1.run.app \
-  --build-arg VITE_FRAB_WORKER_URL=http://34.46.41.101:8080 \
+  --build-arg VITE_FRAB_WORKER_URL=https://identified-gotten-astronomy-healthy.trycloudflare.com \
   --build-arg VITE_FRAB_VOICE_URL=https://frab-voice-200002205070.asia-south1.run.app \
   -t asia-south1-docker.pkg.dev/<PROJECT_ID>/frab/frab-frontend:latest .
 

@@ -12,7 +12,7 @@ WORKDIR /app
 
 # Build-time public config (safe to bake — these are public URLs, not secrets).
 ARG VITE_FRAB_API_URL=https://synthetic-bank-deploy-200002205070.asia-south1.run.app
-ARG VITE_FRAB_WORKER_URL=http://34.46.41.101:8080
+ARG VITE_FRAB_WORKER_URL=https://identified-gotten-astronomy-healthy.trycloudflare.com
 ARG VITE_FRAB_VOICE_URL=https://frab-voice-200002205070.asia-south1.run.app
 ARG VITE_FRAB_VOICE_TEST_PHONE=
 ENV VITE_FRAB_API_URL=$VITE_FRAB_API_URL \

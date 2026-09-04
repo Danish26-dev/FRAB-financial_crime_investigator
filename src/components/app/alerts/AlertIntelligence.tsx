@@ -1,4 +1,6 @@
 import LaunchSequence from "./LaunchSequence";
+import AccountDrainProtection from "./AccountDrainProtection";
+import { ACCOUNT_DRAIN_ALERT_ID } from "../../../lib/demo-account-drain";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -106,6 +108,9 @@ export default function AlertIntelligence({ preselect }: { preselect?: string | 
   const [initializing, setInitializing] = useState(false);
   const [launching, setLaunching] = useState<string | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
+  // TEMPORARY PROTECTION (SCN07/CASE0007 only): the account-drain alert opens a
+  // dedicated protection popup instead of the normal drawer / investigation.
+  const [drainOpen, setDrainOpen] = useState(false);
 
   const [trigger, setTrigger] = useState("ALL");
   const [risk, setRisk] = useState("ALL");
@@ -173,6 +178,10 @@ export default function AlertIntelligence({ preselect }: { preselect?: string | 
 
   useEffect(() => {
     if (!preselect || !alerts.length) return;
+    if (preselect === ACCOUNT_DRAIN_ALERT_ID) {
+      setDrainOpen(true);
+      return;
+    }
     const hit = alerts.find((a) => a.id === preselect);
     if (hit) setSelected(hit);
   }, [preselect, alerts]);
@@ -206,6 +215,17 @@ export default function AlertIntelligence({ preselect }: { preselect?: string | 
 
   const telemetry = telemetryOf(alerts);
 
+  // Row click. The account-drain alert (SCN07/CASE0007) is intercepted: it opens
+  // the dedicated TEMPORARY PROTECTION popup instead of the normal case drawer.
+  const openAlert = (a: AlertRecord) => {
+    if (a.id === ACCOUNT_DRAIN_ALERT_ID) {
+      setSelected(null);
+      setDrainOpen(true);
+      return;
+    }
+    setSelected(a);
+  };
+
   const initialize = async () => {
     if (!selected) return;
     setInitializing(true);
@@ -227,6 +247,7 @@ export default function AlertIntelligence({ preselect }: { preselect?: string | 
 
   return (
     <>
+      {drainOpen ? <AccountDrainProtection onClose={() => setDrainOpen(false)} /> : null}
       {launching ? (
         <LaunchSequence
           caseId={launching}
@@ -335,7 +356,7 @@ export default function AlertIntelligence({ preselect }: { preselect?: string | 
                   {filtered.map((a) => (
                     <tr
                       key={a.id}
-                      onClick={() => setSelected(a)}
+                      onClick={() => openAlert(a)}
                       className={`cursor-pointer border-b border-border transition-colors hover:bg-hover ${
                         selected?.id === a.id
                           ? "bg-lime-soft"

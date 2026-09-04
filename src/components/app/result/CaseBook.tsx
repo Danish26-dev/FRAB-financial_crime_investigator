@@ -11,6 +11,7 @@ import {
   type InvestigationResult,
 } from "../../../lib/frab-result";
 import { useVoiceEscalation } from "../../../hooks/useVoiceEscalation";
+import { useAccountDrainProtection } from "../../../hooks/useAccountDrainProtection";
 import { ErrorBlock, LoadingBlock, Mono } from "../ui";
 import MoneyTrace from "./MoneyTrace";
 import CrimeDnaFingerprint from "./CrimeDnaFingerprint";
@@ -75,6 +76,7 @@ const TABS = [
 
 export default function CaseBook({ caseId, onClose }: { caseId: string; onClose: () => void }) {
   const voice = useVoiceEscalation(caseId);
+  const protection = useAccountDrainProtection(caseId);
   const [result, setResult] = useState<InvestigationResult | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [decision, setDecision] = useState<AnalystDecisionRecord | null>(null);
@@ -130,6 +132,13 @@ export default function CaseBook({ caseId, onClose }: { caseId: string; onClose:
   };
 
   const runCall = () => {
+    // SCN07 mule case: run the TEMPORARY PROTECTION harness (freeze beneficiary
+    // → REAL voice verification → confirm/deny branch). Voice is real.
+    if (protection.active) {
+      protection.trigger();
+      setCallDialog(false);
+      return;
+    }
     // When the voice service is configured, drive the real escalation through
     // it (backend resolves phone + verification; we only supply case context).
     if (voice.available && result) {
@@ -268,10 +277,29 @@ export default function CaseBook({ caseId, onClose }: { caseId: string; onClose:
           result={result}
           decision={decision}
           call={call}
-          voice={voice.state}
-          voiceStarting={voice.starting}
-          voiceError={voice.error}
+          voice={protection.active ? protection.voice : voice.state}
+          voiceStarting={protection.active ? protection.voiceStarting : voice.starting}
+          voiceError={protection.active ? protection.voiceError : voice.error}
           voiceAvailable={voice.available}
+          protection={
+            protection.active
+              ? {
+                  active: true,
+                  state: protection.state,
+                  events: protection.events,
+                  context: {
+                    victimAccount: protection.context.victimAccount,
+                    protectedBeneficiary: protection.context.protectedBeneficiary,
+                    customerName: protection.context.customerName,
+                    triggerAmount: protection.context.triggerAmount,
+                  },
+                  starting: protection.voiceStarting,
+                  onKeep: protection.keepProtection,
+                  onRelease: protection.releaseProtection,
+                  onContinue: protection.continueInvestigation,
+                }
+              : null
+          }
           onRequestCall={() => setCallDialog(true)}
         />
       </PageShell>
@@ -288,7 +316,21 @@ export default function CaseBook({ caseId, onClose }: { caseId: string; onClose:
       { title: "VOICE ESCALATION + AUDIT TRAIL", node: audit },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, decision, submitting, call, evidenceFocus, voice.state, voice.starting, voice.error]);
+  }, [
+    result,
+    decision,
+    submitting,
+    call,
+    evidenceFocus,
+    voice.state,
+    voice.starting,
+    voice.error,
+    protection.active,
+    protection.state,
+    protection.events,
+    protection.voice,
+    protection.voiceStarting,
+  ]);
 
   const total = pages.length || 8;
   const current = Math.min(page, Math.max(0, pages.length - 1));

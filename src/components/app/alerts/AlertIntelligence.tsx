@@ -353,58 +353,74 @@ export default function AlertIntelligence({ preselect }: { preselect?: string | 
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((a) => (
-                    <tr
-                      key={a.id}
-                      onClick={() => openAlert(a)}
-                      className={`cursor-pointer border-b border-border transition-colors hover:bg-hover ${
-                        selected?.id === a.id
-                          ? "bg-lime-soft"
-                          : newAlertIds.has(a.id)
-                            ? "frab-rise bg-lime/10"
-                            : ""
-                      }`}
-                    >
-                      <td className="px-3 py-2.5 pl-6 md:pl-10">
-                        <Mono className="text-[10px] text-lime">{a.id}</Mono>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <Mono className="text-[10px] text-muted-foreground">{a.time}</Mono>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <Mono className="text-[10px] text-foreground">{a.customerId}</Mono>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <Mono className="text-[10px] text-foreground">{a.transactionId}</Mono>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <Mono className="text-[9px] text-foreground">{a.trigger}</Mono>
-                      </td>
-                      <td className="px-3 py-2.5 text-right">
-                        <Mono className="text-[10px] text-foreground">{inr(a.amount)}</Mono>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <span className="flex items-center gap-1.5">
-                          <span
-                            className={`inline-block h-1.5 w-1.5 ${
-                              a.risk === "HIGH"
-                                ? "bg-critical"
-                                : a.risk === "MEDIUM"
-                                  ? "bg-warning"
-                                  : "bg-lime"
-                            }`}
-                          />
-                          <Mono className={`text-[9px] ${RISK_TONE[a.risk]}`}>{a.risk}</Mono>
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <Mono className={`text-[9px] ${STATUS_TONE[a.status]}`}>{a.status}</Mono>
-                      </td>
-                      <td className="px-3 py-2.5 pr-6 md:pr-10">
-                        <Mono className="text-[9px] text-muted-foreground">[ OPEN ]</Mono>
-                      </td>
-                    </tr>
-                  ))}
+                  {filtered.map((a) => {
+                    const isDrain = a.id === ACCOUNT_DRAIN_ALERT_ID;
+                    return (
+                      <tr
+                        key={a.id}
+                        onClick={() => openAlert(a)}
+                        className={`cursor-pointer border-b border-border transition-colors hover:bg-hover ${
+                          selected?.id === a.id
+                            ? "bg-lime-soft"
+                            : isDrain
+                              ? "border-l-2 border-l-warning bg-warning/[0.06] hover:bg-warning/10"
+                              : newAlertIds.has(a.id)
+                                ? "frab-rise bg-lime/10"
+                                : ""
+                        }`}
+                      >
+                        <td className="px-3 py-2.5 pl-6 md:pl-10">
+                          <span className="flex flex-col gap-1">
+                            <Mono className="text-[10px] text-lime">{a.id}</Mono>
+                            {isDrain ? (
+                              <Mono className="w-fit border border-warning/50 px-1.5 py-0.5 text-[7px] text-warning">
+                                ACCOUNT DRAIN · PROTECTION
+                              </Mono>
+                            ) : null}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Mono className="text-[10px] text-muted-foreground">{a.time}</Mono>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Mono className="text-[10px] text-foreground">{a.customerId}</Mono>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Mono className="text-[10px] text-foreground">{a.transactionId}</Mono>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Mono className="text-[9px] text-foreground">{a.trigger}</Mono>
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <Mono className="text-[10px] text-foreground">{inr(a.amount)}</Mono>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span className="flex items-center gap-1.5">
+                            <span
+                              className={`inline-block h-1.5 w-1.5 ${
+                                a.risk === "HIGH"
+                                  ? "bg-critical"
+                                  : a.risk === "MEDIUM"
+                                    ? "bg-warning"
+                                    : "bg-lime"
+                              }`}
+                            />
+                            <Mono className={`text-[9px] ${RISK_TONE[a.risk]}`}>{a.risk}</Mono>
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Mono className={`text-[9px] ${STATUS_TONE[a.status]}`}>{a.status}</Mono>
+                        </td>
+                        <td className="px-3 py-2.5 pr-6 md:pr-10">
+                          <Mono
+                            className={`text-[9px] ${isDrain ? "text-warning" : "text-muted-foreground"}`}
+                          >
+                            {isDrain ? "[ PROTECT ]" : "[ OPEN ]"}
+                          </Mono>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

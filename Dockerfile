@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# FRAB frontend — GCP Cloud Run image (TanStack Start SSR via nitro node-server)
+#
+# IMPORTANT: the VITE_* values are BAKED INTO THE CLIENT BUNDLE AT BUILD TIME.
+# They must be supplied as --build-arg (not runtime env) or the browser bundle
+# will point at the wrong backends. Runtime env only affects the SSR server.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ---- build stage ----
+FROM node:22-slim AS build
+WORKDIR /app
+
+# Build-time public config (safe to bake — these are public URLs, not secrets).
+ARG VITE_FRAB_API_URL=https://synthetic-bank-deploy-200002205070.asia-south1.run.app
+ARG VITE_FRAB_WORKER_URL=http://34.46.41.101:8080
+ARG VITE_FRAB_VOICE_URL=https://frab-voice-200002205070.asia-south1.run.app
+ARG VITE_FRAB_VOICE_TEST_PHONE=
+ENV VITE_FRAB_API_URL=$VITE_FRAB_API_URL \
+    VITE_FRAB_WORKER_URL=$VITE_FRAB_WORKER_URL \
+    VITE_FRAB_VOICE_URL=$VITE_FRAB_VOICE_URL \
+    VITE_FRAB_VOICE_TEST_PHONE=$VITE_FRAB_VOICE_TEST_PHONE \
+    NITRO_PRESET=node-server
+
+# Install dependencies against the lockfile for reproducible builds.
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Build the SSR + client bundle (nitro emits a Node server at .output/server).
+COPY . .
+RUN npm run build
+
+# ---- runtime stage ----
+FROM node:22-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+# Cloud Run injects PORT (default 8080); nitro's node-server honours it.
+ENV PORT=8080
+
+# The built server is fully self-contained under .output — no node_modules needed.
+COPY --from=build /app/.output ./.output
+
+EXPOSE 8080
+CMD ["node", "./.output/server/index.mjs"]

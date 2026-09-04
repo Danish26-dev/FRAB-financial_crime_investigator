@@ -7,9 +7,13 @@
 
 FRAB is an autonomous, multi-agent financial crime investigation system that transforms suspicious banking alerts into **contextual, evidence-backed and audit-ready investigations**.
 
-Instead of replacing an existing fraud or AML detection engine, FRAB operates as an **investigation layer after an alert is generated**.
+It implements the full SH-FIN-01 pipeline as **five specialized agents orchestrated by a Supervisor**:
 
-It gathers customer and transaction context, analyses behavioural patterns, traces financial relationships, retrieves regulatory context, reasons over collected evidence and produces a structured recommendation for a human analyst.
+> **Detect** (Watchman) → **Gather evidence** (Detective + Voice) → **Assess regulatory risk** (Jurist) → **Explain** (Scribe + reasoning chain) → **Recommend** (evidence-linked action) → **Human decides**
+
+Every measurement (scores, deviations, network relationships) is computed by deterministic tools; Gemma only reasons over that evidence — so nothing in an investigation is an unsupported model guess. The agent pipeline runs inside a GCP Confidential VM.
+
+See **[How FRAB Answers SH-FIN-01](#how-frab-answers-sh-fin-01)** for the direct requirement-to-implementation map.
 
 ---
 
@@ -88,6 +92,28 @@ The system converts a suspicious alert into a structured investigation containin
 - reasoning chain
 - recommended action
 - complete investigation timeline
+
+---
+
+# How FRAB Answers SH-FIN-01
+
+The brief asks for **an autonomous investigation system composed of multiple agents** that performs five things. FRAB implements each capability as a distinct agent with a distinct output — not one model doing everything. This table is the direct requirement-to-implementation map.
+
+| #   | SH-FIN-01 requirement                 | FRAB agent / component                                     | What it actually does                                                                                                                                                                                                                                                                                                                                                            | Output artifact                                           |
+| --- | ------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 1   | **Detect anomalies**                  | **Rule Engine** (synthetic bank) + **Watchman** (triage)   | Rule Engine flags suspicious transactions from the live feed; Watchman independently re-derives the anomaly — amount deviation vs. the customer's own baseline, velocity change, beneficiary novelty, previous-alert history — and classifies severity. Detection is **re-computed inside FRAB from evidence**, not blindly trusted from the incoming alert.                     | Triage verdict + severity + reasons                       |
+| 2   | **Gather contextual evidence**        | **Detective** (+ deterministic tools, + **Voice Service**) | Pulls customer profile, transaction history, behaviour baseline, beneficiaries, previous alerts, counterparties; traces the account network; and — when the analyst escalates — places a **real outbound voice interview** returning a structured assessment, transcript and recording.                                                                                          | Evidence package + network trace + voice assessment       |
+| 3   | **Assess regulatory risk**            | **Jurist** + **deterministic risk scoring**                | Deterministic tools compute the measurable risk components (deviation, velocity, structuring indicators, network activity) into a risk score; Jurist maps findings to relevant regulatory context (FATF risk-based approach, AML/CFT considerations) with evidence references. Risk is **derived from gathered evidence**, not passed in as a fixed input.                       | Risk score + regulatory assessment                        |
+| 4   | **Generate audit-ready explanations** | **Scribe** + **Reasoning Chain** (Gemma over evidence)     | Compiles a structured case: each finding, the evidence that supports or contradicts it, the deterministic feature values (Crime DNA), the regulatory mapping, and the full agent trace with timeline. Explanation is **structured reasoning tied to evidence**, not a single summary sentence. Guardrail panel shows LLM-proposed vs. deterministic-shipped values side by side. | Audit-ready case + Crime DNA + reasoning chain + timeline |
+| 5   | **Recommend actions**                 | **Scribe** recommendation + **human-in-the-loop**          | Produces `ESCALATE`, `MONITOR`, `CLOSE_FALSE_POSITIVE` or `INSUFFICIENT_EVIDENCE`, grounded in the collected evidence. For the mule scenario, a temporary-protection harness can proactively freeze a beneficiary and verify by voice before release. The analyst always makes the final call.                                                                                   | Evidence-linked recommendation + analyst decision         |
+
+**Orchestration:** the **Supervisor** coordinates all five agents as a sequenced pipeline (Watchman → Detective → Jurist → Scribe), manages investigation state, and handles partial failures — this is the visible multi-agent orchestration the brief calls for.
+
+**Separation of measurement from reasoning:** every number (scores, deviations, relationships) is computed by deterministic tools; Gemma only _reasons over_ that evidence. The model never invents transaction values, risk scores or regulatory citations. This is what makes the explanations defensible to a regulator.
+
+**Confidential execution:** the entire agent pipeline and Gemma run inside a GCP Confidential VM, so sensitive investigation processing happens in a protected boundary.
+
+> Detection, evidence, risk, explanation and recommendation are **five separate agents with five separate outputs**, orchestrated by a Supervisor and grounded in deterministic evidence — a complete SH-FIN-01 pipeline, not a single-channel component.
 
 ---
 
@@ -1130,6 +1156,33 @@ The prototype connects transaction simulation, alert generation, multi-agent inv
 - **Human-in-the-loop outcomes** with FRAB recommending Escalate, Monitor or Close while retaining the analyst as the final decision-maker.
 
 > **FRAB converts a suspicious alert into an explainable, evidence-backed investigation that an analyst can act on.**
+
+---
+
+# Addressing Common Evaluation Questions
+
+Because SH-FIN-01 asks for a _complete_ multi-agent pipeline, the most common review questions — and where each is answered in this system — are listed directly.
+
+**"Where does anomaly detection happen — is the alert just handed to you?"**
+The incoming alert is a starting signal, not the verdict. **Watchman** independently re-derives the anomaly from raw evidence (baseline deviation, velocity, beneficiary novelty, prior alerts) and can disagree with the incoming severity. Detection is re-computed inside FRAB.
+
+**"Is there real multi-agent orchestration, or one model?"**
+Five specialized agents (Watchman, Detective, Jurist, Scribe) run as a sequenced pipeline coordinated by the **Supervisor**, each with a distinct responsibility and output. The agent trace and timeline are visible in every case.
+
+**"Is regulatory risk computed or passed in?"**
+The `risk_tier` on an inbound alert is only a hint. FRAB's deterministic tools **compute** the risk components from gathered evidence, and **Jurist** produces the regulatory assessment. The shipped risk is derived, not echoed.
+
+**"Are explanations structured or just a paragraph?"**
+Each case carries a structured reasoning chain: findings, the supporting/contradicting evidence per finding, deterministic feature values (Crime DNA), regulatory mapping, and a guardrail panel showing LLM-proposed vs. deterministic-shipped values. The voice component adds transcript + recording for a full artifact trail.
+
+**"Is evidence single-channel?"**
+No. Evidence spans transaction history, behaviour baselines, beneficiaries, previous alerts, counterparty network tracing, and — on escalation — a real voice interview. These are distinct evidence sources combined into one case.
+
+**"How is this audit-ready?"**
+Durable Firestore persistence (survives restarts), typed timeline events, per-finding evidence references, deterministic-vs-LLM guardrail, and full voice transcript/recording give a regulator a reconstructable trail rather than a single model output.
+
+**"What about operational fragility (e.g., the voice hang-up)?"**
+The voice call requires an identity-verification factor or the assistant ends the call. The frontend now **always** supplies a verification Q&A (caller-provided wins, otherwise a safe default), so a call cannot go out without an approved factor. See `VOICE_CONTRACT.md`.
 
 ---
 

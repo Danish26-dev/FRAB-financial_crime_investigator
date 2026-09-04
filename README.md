@@ -13,44 +13,6 @@ It gathers customer and transaction context, analyses behavioural patterns, trac
 
 ---
 
-## Table of Contents
-
-- [Problem](#problem)
-- [Solution](#solution)
-- [Why FRAB](#why-frab)
-- [Key Capabilities](#key-capabilities)
-- [End-to-End Workflow](#end-to-end-workflow)
-- [System Architecture](#system-architecture)
-- [Sequential Investigation Flow](#sequential-investigation-flow)
-- [Multi-Agent Architecture](#multi-agent-architecture)
-- [Agent Responsibilities](#agent-responsibilities)
-- [Deterministic Analysis + Gemma](#deterministic-analysis--gemma)
-- [Confidential AI Execution](#confidential-ai-execution)
-- [Synthetic Banking Environment](#synthetic-banking-environment)
-- [Fraud Investigation Scenarios](#fraud-investigation-scenarios)
-- [Crime DNA Fingerprint](#crime-dna-fingerprint)
-- [Financial Network Investigation](#financial-network-investigation)
-- [Investigation Output](#investigation-output)
-- [Voice Investigation Escalation](#voice-investigation-escalation)
-- [Technology Stack](#technology-stack)
-- [Data Model](#data-model)
-- [Security & Privacy](#security--privacy)
-- [Results](#results)
-- [Novelty](#novelty)
-- [Implementation](#implementation)
-- [Running the Project](#running-the-project)
-- [Environment Variables](#environment-variables)
-- [Project Structure](#project-structure)
-- [Demo Flow](#demo-flow)
-- [Evaluation & Validation](#evaluation--validation)
-- [Limitations](#limitations)
-- [Future Enhancements](#future-enhancements)
-- [Research & References](#research--references)
-- [Hackathon Context](#hackathon-context)
-- [License](#license)
-
----
-
 # Problem
 
 Financial institutions generate large volumes of fraud and AML alerts every day.

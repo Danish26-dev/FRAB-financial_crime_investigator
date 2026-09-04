@@ -21,9 +21,11 @@ ENV VITE_FRAB_API_URL=$VITE_FRAB_API_URL \
     VITE_FRAB_VOICE_TEST_PHONE=$VITE_FRAB_VOICE_TEST_PHONE \
     NITRO_PRESET=node-server
 
-# Install dependencies against the lockfile for reproducible builds.
+# Install dependencies. Using `npm install` (not `npm ci`) because the committed
+# package-lock.json can drift from package.json (transitive deps like ajv);
+# npm ci fails hard on any drift, npm install resolves against package.json.
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm install --no-audit --no-fund
 
 # Build the SSR + client bundle (nitro emits a Node server at .output/server).
 COPY . .

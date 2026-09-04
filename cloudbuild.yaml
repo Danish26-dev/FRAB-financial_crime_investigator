@@ -15,7 +15,7 @@ substitutions:
   _REPO: frab
   _TAG: latest
   _API_URL: https://synthetic-bank-deploy-200002205070.asia-south1.run.app
-  _WORKER_URL: https://identified-gotten-astronomy-healthy.trycloudflare.com
+  _WORKER_URL: https://beautiful-interaction-reg-listings.trycloudflare.com
   _VOICE_URL: https://frab-voice-200002205070.asia-south1.run.app
   _VOICE_TEST_PHONE: ""
 

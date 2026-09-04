@@ -47,7 +47,14 @@ export function useVoiceEscalation(caseId: string): VoiceRun {
     void fetchVoiceState(caseId)
       .then((s) => {
         if (cancelled.current) return;
-        setState(s);
+        // Don't let an expired/empty poll ("NONE" with no data) clobber a good
+        // assessment we already have. Keep the richer state.
+        setState((prev) => {
+          const incomingEmpty =
+            (s.status as string) === "NONE" || (!s.summary && (s.timeline?.length ?? 0) === 0);
+          if (prev && incomingEmpty && prev.status === "COMPLETED") return prev;
+          return s;
+        });
         if (isTerminal(s.status)) stopPolling();
       })
       .catch(() => {
@@ -70,16 +77,20 @@ export function useVoiceEscalation(caseId: string): VoiceRun {
       void startVoiceEscalation(caseId, withPhone)
         .then((res) => {
           if (cancelled.current) return;
+          // Seed with the start response (only has case_id/call_id/status).
           setState((prev) => ({
             case_id: res.case_id,
             call_id: res.call_id,
             status: res.status,
             timeline: prev?.timeline ?? [],
           }));
-          // Begin polling unless the call somehow started terminal.
+          // ALWAYS fetch the full assessment via GET /voice — even when the
+          // service completes synchronously (POST returns COMPLETED). The POST
+          // response has no summary/verification/etc.; only GET /voice does.
+          poll();
+          // Keep polling while the call is still active.
           if (!isTerminal(res.status)) {
             setPolling(true);
-            poll();
             timer.current = setInterval(poll, POLL_MS);
           }
         })

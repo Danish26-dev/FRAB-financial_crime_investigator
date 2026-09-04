@@ -16,7 +16,7 @@ vars does nothing for the client.
 | Variable | Purpose | Current value (default) |
 |---|---|---|
 | `VITE_FRAB_API_URL` | Synthetic bank API | `https://synthetic-bank-deploy-200002205070.asia-south1.run.app` |
-| `VITE_FRAB_WORKER_URL` | Investigation worker (Gemma VM, HTTPS tunnel) | `https://identified-gotten-astronomy-healthy.trycloudflare.com` |
+| `VITE_FRAB_WORKER_URL` | Investigation worker (Gemma VM, HTTPS tunnel) | `https://beautiful-interaction-reg-listings.trycloudflare.com` |
 | `VITE_FRAB_VOICE_URL` | Voice escalation service | `https://frab-voice-200002205070.asia-south1.run.app` |
 | `VITE_FRAB_VOICE_TEST_PHONE` | Optional demo phone override | *(empty)* |
 
@@ -65,7 +65,7 @@ gcloud builds submit --config cloudbuild.yaml \
 # 1. Build the image (bakes the public config into the bundle)
 docker build \
   --build-arg VITE_FRAB_API_URL=https://synthetic-bank-deploy-200002205070.asia-south1.run.app \
-  --build-arg VITE_FRAB_WORKER_URL=https://identified-gotten-astronomy-healthy.trycloudflare.com \
+  --build-arg VITE_FRAB_WORKER_URL=https://beautiful-interaction-reg-listings.trycloudflare.com \
   --build-arg VITE_FRAB_VOICE_URL=https://frab-voice-200002205070.asia-south1.run.app \
   -t asia-south1-docker.pkg.dev/<PROJECT_ID>/frab/frab-frontend:latest .
 

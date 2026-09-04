@@ -835,7 +835,12 @@ import {
   type RawInvestigationBundle,
   type RawTxn,
 } from "./frab-backend";
-import { IS_WORKER_LIVE, fetchWorkerResult } from "./frab-worker";
+import {
+  IS_WORKER_LIVE,
+  fetchWorkerResult,
+  fetchWorkerStatus,
+  startWorkerInvestigation,
+} from "./frab-worker";
 import { mapWorkerResult, type AlertContext } from "./frab-worker-map";
 
 export const IS_SIMULATED = !API_BASE_URL && !IS_WORKER_LIVE;
@@ -928,11 +933,57 @@ export async function fetchInvestigationResult(caseId: string): Promise<Investig
   return liveResult(caseId, bundle, caseNote, disposition);
 }
 
-/** Fetch the worker's investigation result and enrich the header from the bank. */
+/**
+ * Fetch the worker's investigation result, enriched with bank alert context.
+ *
+ * Self-healing: the worker's case store is in-memory, so a case may not exist
+ * (never started, or the worker restarted). If GET /result 404s, we START the
+ * investigation (POST /investigate), poll /status until it completes, then read
+ * the result. This is the POST -> poll -> GET flow the worker expects.
+ */
 async function fetchWorkerBackedResult(caseId: string): Promise<InvestigationResult> {
-  const worker = await fetchWorkerResult(caseId);
-  const alertCtx = await buildAlertContext(caseId, worker.case_id);
-  return mapWorkerResult(caseId, worker, alertCtx);
+  // Alert context first — needed both for the result header AND to start a case.
+  const alertCtx = await buildAlertContext(caseId, caseId);
+
+  try {
+    const worker = await fetchWorkerResult(caseId);
+    return mapWorkerResult(caseId, worker, alertCtx);
+  } catch {
+    // Likely CASE_NOT_FOUND — start it, then wait for completion.
+    await ensureWorkerCaseStarted(caseId, alertCtx);
+    const worker = await fetchWorkerResult(caseId);
+    return mapWorkerResult(caseId, worker, alertCtx);
+  }
+}
+
+/** Start a worker investigation for a case and poll until it completes. */
+async function ensureWorkerCaseStarted(caseId: string, ctx: AlertContext): Promise<void> {
+  await startWorkerInvestigation({
+    case_id: caseId,
+    alert_id: ctx.alertId,
+    alert: {
+      type: ctx.type || "UNKNOWN",
+      severity: ctx.risk ?? "MEDIUM",
+      transaction_id: ctx.transaction ?? "",
+    },
+    customer_id: ctx.customer,
+  });
+
+  // Poll /status until COMPLETE (real Gemma run ~15-25s). Cap the wait.
+  const DEADLINE_MS = 60_000;
+  const INTERVAL_MS = 2_000;
+  const start = Date.now();
+  while (Date.now() - start < DEADLINE_MS) {
+    try {
+      const { status } = await fetchWorkerStatus(caseId);
+      const s = (status ?? "").toUpperCase();
+      if (s === "COMPLETE" || s === "COMPLETED" || s === "PARTIAL" || s === "FAILED") return;
+    } catch {
+      /* status may briefly 404 right after POST — keep polling */
+    }
+    await new Promise((r) => setTimeout(r, INTERVAL_MS));
+  }
+  // Deadline hit — let the caller's GET /result surface whatever exists.
 }
 
 /** Assemble alert-side context (customer/account/type) for the result header. */
